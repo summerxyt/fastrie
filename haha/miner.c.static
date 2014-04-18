@@ -12,7 +12,7 @@ pthread_t finish_id = -1;
 pthread_mutex_t mutex;
 //pthread_mutex_t wheel;
 
-void rieminer(void *arg) /*第 1 个线程执行代码*/
+void rieminer(void *arg)
 {
     int i = *(int* )arg;
     char start[100] = "0x801A2F60588BF10BB614D6796A726025F88C7156E3FBDF68685FC0617F4266358C0000000000";
@@ -77,11 +77,8 @@ int main(int argc, char *argv[])
         }
         pthread_mutex_unlock(&mutex);
     }
-    //pthread_join(id2,NULL); /*等待第 2 个线程结束*/
     
-    /*打印 counter 最后的值*/
-    //printf("最后的 counter 值为%d\n",counter);
-    //pthread_mutex_destroy(&mutex);
+    pthread_mutex_destroy(&mutex);
     exit(0);
 }
 
