@@ -45,17 +45,17 @@ void rieminer(void *arg)
 
     while(1) {
         if(is_fermat_valid(rop)){
-          break;
+            pthread_mutex_lock(&mutex);
+            finish_id = pthread_self();
+            printf("thread %d find rie prime!\n", finish_id);
+            pthread_mutex_unlock(&mutex);
+            break;
         }
         mpz_add_ui(tmp, rop, 4*PRIMORAL);
         mpz_set(rop, tmp);
     }
 
     //mpz_out_str(fp, 10, rop);
-    pthread_mutex_lock(&mutex);
-    finish_id = pthread_self();
-    printf("thread %d find rie prime!\n", finish_id);
-    pthread_mutex_unlock(&mutex);
 }
 
 int main(int argc, char *argv[])
