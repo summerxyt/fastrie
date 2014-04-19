@@ -16,8 +16,6 @@ int main(int argc, char **argv)
     mpz_init(min);
     mpz_init(max);
 
-
-
     mpz_set_str(min, start, 0);
     //mpz_set_str(max, argv[2], 0);
 
