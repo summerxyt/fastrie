@@ -8,7 +8,7 @@
 
 //2*3*5*7
 #define PRIMORAL (2*3*5*7)
-#define SIEVESIZE (1024*512)
+#define SIEVESIZE (1024*128)
 //#define SIEVESIZE (1024*512)
 //#define MAX_SIEVE_PRIME (1000000000)
 #define MAX_SIEVE_PRIME (1000000)
@@ -53,8 +53,8 @@ int main(int argc, char **argv)
 	mpz_init(candidate_plus);
 	int tid = omp_get_thread_num();
 	sieve[tid] = (bool *) malloc(sizeof(bool) * SIEVESIZE);
-	if(sieve[tid]==NULL)
-	  printf("%d nil\n", tid);
+	if (sieve[tid] == NULL)
+	    printf("%d nil\n", tid);
 	memset(sieve[tid], true, SIEVESIZE);
 #pragma omp for schedule(static, 16)
 	for (int i = 0; i < prime_size; i++) {
@@ -76,58 +76,27 @@ int main(int argc, char **argv)
 						 start_t.tv_usec);
     printf("running time:%f\n", duration);
 
-	    mpz_t tmp[4];
-	    mpz_t candidate[4];
-	    mpz_init(tmp[0]);
-	    mpz_init(tmp[1]);
-	    mpz_init(tmp[2]);
-	    mpz_init(tmp[3]);
-	    mpz_init(candidate[0]);
-	    mpz_init(candidate[1]);
-	    mpz_init(candidate[2]);
-	    mpz_init(candidate[3]);
+    mpz_t tmp[4];
+    mpz_t candidate[4];
+    mpz_init(tmp[0]);
+    mpz_init(tmp[1]);
+    mpz_init(tmp[2]);
+    mpz_init(tmp[3]);
+    mpz_init(candidate[0]);
+    mpz_init(candidate[1]);
+    mpz_init(candidate[2]);
+    mpz_init(candidate[3]);
     while (1) {
 	//step 1
 	//printf("Sieving\n");
 
 	gettimeofday(&start_t, NULL);
-	    for (int i = 0; i < prime_size; i++) {
-		    //printf("thread %d:prime%d\n", tid, primes[i]);
-		for (int j = 0; j < 6; j++) {
-		    //o = sieve_loc[sieve_loc_index];
-		    unsigned int o = sieve_loc[8 * i + j];
-		    while (o < SIEVESIZE) {
-			sieve[0][o] = false;
-			o += primes[i];
-		    }
-		    sieve_loc[8 * i + j] = o - SIEVESIZE;
-		}
-	    }
-/*for(int i=0;i<SIEVESIZE;i++)
-  if(sieve[0][i])
-    printf("1\n");
-  else
-    printf("0\n");
-
-for(int i=0;i<prime_size;i++){
-  for(int j=0;j<6;j++)
-    printf("%d:%d\n",primes[i], sieve_loc[8*i+j]);
-}
-break;*/
-    gettimeofday(&end_t, NULL);
-    duration =
-	(end_t.tv_sec - start_t.tv_sec) * 1E6 + (end_t.tv_usec -
-						 start_t.tv_usec);
-    printf("running time1:%f\n", duration);
-
-	gettimeofday(&start_t, NULL);
-	#pragma omp parallel
+#pragma omp parallel
 	{
 	    int tid = omp_get_thread_num();
-	    //int num = omp_get_num_threads();
-	    /*#pragma omp for
+#pragma omp for schedule(dynamic, 2)
 	    for (int i = 0; i < prime_size; i++) {
-		    //printf("thread %d:prime%d\n", tid, primes[i]);
+		//printf("thread %d:prime%d\n", tid, primes[i]);
 		for (int j = 0; j < 6; j++) {
 		    //o = sieve_loc[sieve_loc_index];
 		    unsigned int o = sieve_loc[8 * i + j];
@@ -137,16 +106,28 @@ break;*/
 		    }
 		    sieve_loc[8 * i + j] = o - SIEVESIZE;
 		}
-	    }*/
-	//#pragma omp barrier
-	    #pragma omp for
+	    }
+
+	}
+	gettimeofday(&end_t, NULL);
+	duration =
+	    (end_t.tv_sec - start_t.tv_sec) * 1E6 + (end_t.tv_usec -
+						     start_t.tv_usec);
+	printf("running time1:%f\n", duration);
+
+	gettimeofday(&start_t, NULL);
+#pragma omp parallel
+	{
+	    int tid = omp_get_thread_num();
+	    int num = omp_get_num_threads();
+#pragma omp for
 	    for (int i = 0; i < SIEVESIZE; i++) {
-		/*bool flag = true;
+		bool flag = true;
 		for (int j = 0; j < num; j++) {
 		    flag = flag && sieve[j][i];
 		    sieve[j][i] = true;
-		}*/
-		if (sieve[0][i]) {
+		}
+		if (flag) {
 		    mpz_set_ui(tmp[tid], i);
 		    mpz_addmul_ui(tmp[tid], sievesize, loop_count);
 		    mpz_set(candidate[tid], rop);
@@ -157,22 +138,21 @@ break;*/
 		    }
 		}
 		//printf("thread %d:i%d\n", tid, i);
-		if(!sieve[0][i])
-		  sieve[0][i] = true;
 	    }
-	/*#pragma omp barrier
-	    #pragma omp for
+/*#pragma omp barrier
+#pragma omp for
 	    for (int i = 0; i < prime_size; i++) {
 		for (int j = 0; j < 6; j++)
-		  sieve[tid][i*8+j]=true;
-	    }*/
-
+		    if (!sieve[tid][i * 8 + j])
+			sieve[tid][i * 8 + j] = true;
+	    }
+*/
 	}
-    gettimeofday(&end_t, NULL);
-    duration =
-	(end_t.tv_sec - start_t.tv_sec) * 1E6 + (end_t.tv_usec -
-						 start_t.tv_usec);
-    printf("running time2:%f\n", duration);
+	gettimeofday(&end_t, NULL);
+	duration =
+	    (end_t.tv_sec - start_t.tv_sec) * 1E6 + (end_t.tv_usec -
+						     start_t.tv_usec);
+	printf("running time2:%f\n", duration);
 	loop_count++;
     }
 
