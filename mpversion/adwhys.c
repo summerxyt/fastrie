@@ -40,8 +40,8 @@ int main(int argc, char **argv)
 					   INT_PRIMES);
     for (primes = primes_start; *primes <= 7; primes++);
     prime_size -= (primes - primes_start);
-    //loc_size = 6 * prime_size;
-    loc_size = 8 * prime_size;	//padding
+    loc_size = 6 * prime_size;
+    //loc_size = 8 * prime_size;	//padding
     sieve_loc = (int *) malloc(sizeof(int) * loc_size);
 
     struct timeval start_t;
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 		mpz_add_ui(candidate_plus, rop, offsets[j]);
 		unsigned long cmodp = mpz_fdiv_ui(candidate_plus, p);
 		int index = ((p - cmodp) * inv) % p;
-		sieve_loc[i * 8 + j] = index;
+		sieve_loc[i * 6 + j] = index;
 	    }
 	}
 	mpz_clear(candidate_plus);
@@ -84,17 +84,17 @@ int main(int argc, char **argv)
 
 	{
 	gettimeofday(&start_t, NULL);
-	    int tid = omp_get_thread_num();
+	    //int tid = omp_get_thread_num();
 	    for (int i = 0; i < prime_size; i++) {
 		    //printf("thread %d:prime%d\n", tid, primes[i]);
 		for (int j = 0; j < 6; j++) {
 		    //o = sieve_loc[sieve_loc_index];
-		    unsigned int o = sieve_loc[8 * i + j];
+		    int o = sieve_loc[6 * i + j];
 		    while (o < SIEVESIZE) {
-			sieve[tid][o] = false;
+			sieve[0][o] = false;
 			o += primes[i];
 		    }
-		    sieve_loc[8 * i + j] = o - SIEVESIZE;
+		    sieve_loc[6 * i + j] = o - SIEVESIZE;
 		}
 	    }
     gettimeofday(&end_t, NULL);
@@ -109,12 +109,12 @@ int main(int argc, char **argv)
 	gettimeofday(&start_t, NULL);
 	    int num = omp_get_num_threads();
 	    for (int i = 0; i < SIEVESIZE; i++) {
-		bool flag = true;
+		/*bool flag = true;
 		for (int j = 0; j < num; j++) {
 		    flag = flag && sieve[j][i];
 		    sieve[j][i] = true;
-		}
-		if (flag) {
+		}*/
+		if (sieve[0][i]) {
 		    mpz_set_ui(tmp, i);
 		    mpz_addmul_ui(tmp, sievesize, loop_count);
 		    mpz_set(candidate, rop);
@@ -124,6 +124,7 @@ int main(int argc, char **argv)
 			exit(0);
 		    }
 		}
+		sieve[0][i] = true;
 	    }
     gettimeofday(&end_t, NULL);
     duration =

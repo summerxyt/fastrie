@@ -9,7 +9,7 @@
 //2*3*5*7
 #define PRIMORAL (2*3*5*7)
 #define SIEVESIZE (1024*512)
-#define MAX_SIEVE_PRIME (1000000)
+#define MAX_SIEVE_PRIME (100000)
 
 int main(int argc, char **argv)
 {
@@ -18,7 +18,7 @@ int main(int argc, char **argv)
     unsigned long loop_count = 0;
     FILE *fp = stdout;
     bool *sieve;
-    int *primes, *primes_start, *sieve_loc;
+    int *primes, *primes_start, *sieve_loc, *sieve_loc2;
     size_t prime_size, loc_size;
 
     mpz_init(min);
@@ -41,6 +41,7 @@ int main(int argc, char **argv)
     //loc_size = 6 * prime_size;
     loc_size = 8 * prime_size;	//padding
     sieve_loc = (int *) malloc(sizeof(int) * loc_size);
+    sieve_loc2 = (int *) malloc(sizeof(int) * loc_size);
 
     struct timeval start_t;
     struct timeval end_t;
@@ -71,9 +72,7 @@ int main(int argc, char **argv)
 
     while (1) {
 	//step 1
-	unsigned int sieve_loc_index = 0;
 	//printf("Sieving\n");
-
 	gettimeofday(&start_t, NULL);
 #pragma omp parallel
 	{
@@ -87,13 +86,14 @@ int main(int argc, char **argv)
 
 	    //printf("thread:%d start:%d end:%d\n", tid,start,end);
 	    for (int i = 0; i < prime_size; i++) {
+		int prime = primes[i];
 		for (int j = 0; j < 6; j++) {
 		    //o = sieve_loc[sieve_loc_index];
-		    int o = sieve_loc[8 * i + j];
+		    int o = sieve_loc[i * 8 + j];
 		    int t_start = o;
 		    int jump;
 		    if (start > o) {
-			jump = (start + primes[i] - 1 - o) / primes[i];
+			jump = (start + prime - 1 - o) / prime;
 		    } else {
 			jump = 0;
 		    }
@@ -104,12 +104,11 @@ int main(int argc, char **argv)
 			sieve[o] = false;
 			o += primes[i];
 		    }
-		    //if (tid == num - 1)
-		    //sieve_loc[8 * i + j] = o - SIEVESIZE;
-		    //sieve_loc_index += 1;
+		    if (tid == num - 1)
+		      sieve_loc2[8 * i + j] = o - SIEVESIZE;
 		}
 	    }
-#pragma omp barriar
+/*#pragma omp barriar
 //update sieve_loc
 #pragma omp for
 	    for (int i = 0; i < prime_size; i++) {
@@ -126,7 +125,7 @@ int main(int argc, char **argv)
 		    sieve_loc[8 * i + j] = o - SIEVESIZE;
 
 		}
-	    }
+	    }*/
 	}
 	gettimeofday(&end_t, NULL);
 	duration =
@@ -176,7 +175,9 @@ break;*/
 	printf("running time2:%f\n", duration);
 
 	loop_count++;
+    int *p=sieve_loc;
+    sieve_loc=sieve_loc2;
+    sieve_loc2=p;
     }
-
     return 0;
 }
