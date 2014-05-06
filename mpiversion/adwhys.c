@@ -8,10 +8,40 @@
 
 //2*3*5*7
 #define PRIMORAL (2*3*5*7)
-#define SIEVESIZE (1024*1024)
+#define SIEVESIZE (1024*512)
 //#define SIEVESIZE (1024*512)
 //#define MAX_SIEVE_PRIME (1000000000)
 #define MAX_SIEVE_PRIME (1000000)
+
+int* primesieve_generate_primes(int prime_size, int *count){
+
+    int *re = (int* )malloc(sizeof(int) * (prime_size+1)/2);
+    bool *isprime = (bool* )malloc(sizeof(bool) * (prime_size+1));
+    
+    memset(isprime, true, prime_size+1);
+
+    int sN = int(floor(sqrt(prime_size)));
+    
+    *count = 1;
+    re[0] = 2;
+
+    for(int i = 3;i < prime_size+1;i+=2){ 
+        if (isprime[i]){
+            re[*count] = i;
+        *count = *count + 1;
+            if (i < sN){
+                int ni = 2*i;
+                while (ni <= prime_size){
+                    isprime[ni] = false;
+                    ni += i;
+                }
+            }
+        }
+    }
+
+    return re;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -35,9 +65,7 @@ int main(int argc, char **argv)
 
     mpz_add_ui(rop, min, r);
 
-    primes_start =
-	(int *) primesieve_generate_primes(0, MAX_SIEVE_PRIME, &prime_size,
-					   INT_PRIMES);
+    primes_start = primesieve_generate_primes(MAX_SIEVE_PRIME, &prime_size);
     for (primes = primes_start; *primes <= 7; primes++);
     prime_size -= (primes - primes_start);
     //loc_size = 6 * prime_size;
@@ -47,7 +75,6 @@ int main(int argc, char **argv)
     struct timeval start_t;
     struct timeval end_t;
     gettimeofday(&start_t, NULL);
-#pragma omp parallel
     {
 	mpz_t candidate_plus;
 	mpz_init(candidate_plus);
@@ -56,7 +83,6 @@ int main(int argc, char **argv)
 	if(sieve[tid]==NULL)
 	  printf("%d nil\n", tid);
 	memset(sieve[tid], true, SIEVESIZE);
-#pragma omp for schedule(static, 16)
 	for (int i = 0; i < prime_size; i++) {
 	    //printf("%d:%d\n",tid,i);
 	    int p = primes[i];
@@ -76,15 +102,17 @@ int main(int argc, char **argv)
 						 start_t.tv_usec);
     printf("running time:%f\n", duration);
 
+	    mpz_t tmp;
+	    mpz_t candidate;
+	    mpz_init(tmp);
+	    mpz_init(candidate);
     while (1) {
 	//step 1
 	//printf("Sieving\n");
 
-	//gettimeofday(&start_t, NULL);
-	#pragma omp parallel
 	{
+	gettimeofday(&start_t, NULL);
 	    int tid = omp_get_thread_num();
-	    #pragma omp for
 	    for (int i = 0; i < prime_size; i++) {
 		    //printf("thread %d:prime%d\n", tid, primes[i]);
 		for (int j = 0; j < 6; j++) {
@@ -97,16 +125,17 @@ int main(int argc, char **argv)
 		    sieve_loc[8 * i + j] = o - SIEVESIZE;
 		}
 	    }
-	}
+    gettimeofday(&end_t, NULL);
+    float duration =
+	(end_t.tv_sec - start_t.tv_sec) * 1E6 + (end_t.tv_usec -
+						 start_t.tv_usec);
+    printf("running time:%f\n", duration);
+	//}
 	//printf("Testing Candidates\n");
-	#pragma omp parallel
-	{
-	    mpz_t tmp;
-	    mpz_t candidate;
-	    mpz_init(tmp);
-	    mpz_init(candidate);
+	//#pragma omp parallel
+	//{
+	gettimeofday(&start_t, NULL);
 	    int num = omp_get_num_threads();
-	    #pragma omp for 
 	    for (int i = 0; i < SIEVESIZE; i++) {
 		bool flag = true;
 		for (int j = 0; j < num; j++) {
@@ -124,12 +153,18 @@ int main(int argc, char **argv)
 		    }
 		}
 	    }
-	    mpz_clear(tmp);
-	    mpz_clear(candidate);
-	}
+    gettimeofday(&end_t, NULL);
+    duration =
+	(end_t.tv_sec - start_t.tv_sec) * 1E6 + (end_t.tv_usec -
+						 start_t.tv_usec);
+    printf("running time:%f\n", duration);
+	//}
 
+	}
 	loop_count++;
     }
+	    mpz_clear(tmp);
+	    mpz_clear(candidate);
 
     return 0;
 }
