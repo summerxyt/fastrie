@@ -55,8 +55,8 @@ int main (int argc, char *argv[])
     mpz_t rop;
     mpz_t sievesize;
 
-    char start[100] = "0x801A2F60588BF10BB614D6796A726025F88C7156E3FBDF68685FC0617F4266358C0000000000";
-    //char start[100] = "0x801A2F60588BF10BB614D6796A726025F88C7156E3FBDF68685FC0617F4266358C00D0000000";
+    // char start[100] = "0x801A2F60588BF10BB614D6796A726025F88C7156E3FBDF68685FC0617F4266358C0000000000";
+    char start[100] = "0x801A2F60588BF10BB614D6796A726025F88C7156E3FBDF68685FC0617F4266358C00D0000000";
 
     unsigned long r;
     unsigned long loop_count;
@@ -68,6 +68,7 @@ int main (int argc, char *argv[])
     int *sieve_loc;
     int prime_size;
     int loc_size;
+    double duration;
     struct timeval t_start;
     struct timeval t_end;
 
@@ -92,7 +93,8 @@ int main (int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     MPI_Get_processor_name(hostname, &len);
 
-    sieve = (bool* )malloc(sizeof(bool) * SIEVESIZE * 4);
+    int roundup = (SIEVESIZE+np-1) / np;
+    sieve = (bool* )malloc(sizeof(bool) * roundup * np);
 
     //printf ("Hello from task %d on %s!\n", rank, hostname);
 
@@ -148,69 +150,68 @@ int main (int argc, char *argv[])
         unsigned int o;
         //printf("Sieving\n");
 
-        gettimeofday(&t_start, NULL);
+        //gettimeofday(&t_start, NULL);
 
         // each process test its own set of prime
-        int chunk = (prime_size + np - 1) / np;
+        int chunk = (SIEVESIZE + np - 1) / np;
         int index_start = rank * chunk;
         int index_end = index_start + chunk;
 
-        if(index_end > prime_size){
-            index_end = prime_size;
+        if(index_end > SIEVESIZE){
+            index_end = SIEVESIZE;
         }
 
-        sieve_loc_index = 6 * index_start;
-
-        for(int i = index_start; i < index_end; i++) {
+        sieve_loc_index = 0;
+        for(int i = 0; i < prime_size; i++) {
             for(int j = 0; j < 6; j++){
                 o = sieve_loc[sieve_loc_index];
-                while(o < SIEVESIZE){
-                    sieve[o] = false;
+                int t_start = o;
+                int jump;
+                if(index_start > 0){
+                    jump = (index_start+primes[i]-1-o)/primes[i];
+                }
+                else{
+                    jump = 0;
+                }
+
+                o += jump * primes[i];
+                while(o < index_end){
+                    sieve[o-index_start] = false;
                     o += primes[i];
                 }
 
+                jump = (SIEVESIZE+primes[i]-1-t_start)/primes[i];
+                t_start += jump * primes[i];
                 // prepare for the next round
-                sieve_loc[sieve_loc_index] = o - SIEVESIZE;
+                sieve_loc[sieve_loc_index] = t_start - SIEVESIZE;
                 sieve_loc_index += 1;   
             } 
         }
 
-        gettimeofday(&t_end, NULL);
+        // gettimeofday(&t_end, NULL);
 
-        duration = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec) / 1000000.0;
-        printf("Process %d use Time in creating sieve: %f\n", rank, duration);
+        // duration = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec) / 1000000.0;
+        // printf("Process %d use Time in creating sieve: %f\n", rank, duration);
 
         // wait each process finish its part of sieve
         MPI_Barrier(MPI_COMM_WORLD);
 
-        gettimeofday(&t_start, NULL);
+        //gettimeofday(&t_start, NULL);
 
-        MPI_Allgather(sieve, SIEVESIZE, MPI_C_BOOL, sieve, SIEVESIZE, MPI_C_BOOL, MPI_COMM_WORLD);
-        //printf("Testing Candidates\n");
-        for(int i = 0;i < SIEVESIZE;i++){
-            for(int j = 0;j < np;j++){
-                sieve[i] = sieve[i] && sieve[i+j*SIEVESIZE];
-                if(!sieve[i]){
-                    break;
-                } 
-            }
-        }
+        MPI_Allgather(sieve, roundup, MPI_C_BOOL, sieve, roundup, MPI_C_BOOL, MPI_COMM_WORLD);
 
-        gettimeofday(&t_end, NULL);
+        // gettimeofday(&t_end, NULL);
 
-        duration = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec) / 1000000.0;
-        printf("Process %d use Time in combining sieve: %f\n", rank, duration);
+        // duration = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec) / 1000000.0;
+        // printf("Process %d use Time in combining sieve: %f\n", rank, duration);
 
         mpz_t tmp;
         mpz_t candidate;
         //mpz_inits(tmp, candidate);
         mpz_init(tmp);
         mpz_init(candidate);
-       
-        chunk = (SIEVESIZE + np - 1) / np;
-        index_start = rank * chunk;
-        index_end = index_start + chunk; 
-        gettimeofday(&t_start, NULL);
+        
+        //gettimeofday(&t_start, NULL);
 
         for(int i = index_start; i < index_end; i++) {
 
@@ -229,10 +230,10 @@ int main (int argc, char *argv[])
             //sieve[i] = true;
         }
 
-        gettimeofday(&t_end, NULL);
+        // gettimeofday(&t_end, NULL);
 
-        duration = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec) / 1000000.0;
-        printf("Process %d use Time in testing candidate: %f\n", rank, duration);
+        // duration = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec) / 1000000.0;
+        // printf("Process %d use Time in testing candidate: %f\n", rank, duration);
 
         MPI_Barrier(MPI_COMM_WORLD);            
 
@@ -263,7 +264,7 @@ int main (int argc, char *argv[])
         printf("MASTER: Number of MPI tasks is: %d\n",np);
         gettimeofday(&t_end, NULL);
 
-        double duration = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec) / 1000000.0;
+        duration = t_end.tv_sec - t_start.tv_sec + (t_end.tv_usec - t_start.tv_usec) / 1000000.0;
         printf("Process use Time in total: %f\n", rank, duration);
     }
     
