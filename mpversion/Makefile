@@ -8,6 +8,6 @@ why:fermat.h adwhy.c
 why2:fermat.h adwhy2.c
 	g++ -O2 -fopenmp adwhy2.c -o why2 -lgmp -lprimesieve
 why3:fermat.h adwhy3.c
-	g++ -O2 -msse -fopenmp adwhy3.c -o why3 -lgmp -lprimesieve
+	g++ -O2 -fopenmp adwhy3.c -o why3 -lgmp -lprimesieve
 clean:
 	rm main why why2 why3
