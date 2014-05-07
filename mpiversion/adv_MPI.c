@@ -167,7 +167,7 @@ int main (int argc, char *argv[])
                 o = sieve_loc[sieve_loc_index];
                 int t_start = o;
                 int jump;
-                if(index_start > 0){
+                if(index_start > o){
                     jump = (index_start+primes[i]-1-o)/primes[i];
                 }
                 else{
